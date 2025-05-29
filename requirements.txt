@@ -1,12 +1,3 @@
-streamlit==1.30.0
-rdkit
-mordred
-numpy
-pandas
-tempfile
-base64
-pillow
-io
-pyvirtualdisplay
-autogluon==1.2
-autogluon.tabular[all,tabpfn,vowpalwabbit,imodels,skex,skl2onnx]
+version https://git-lfs.github.com/spec/v1
+oid sha256:3cd97e6559b58c64aa1a8b7d02f49cdbeb70a4b0cb9232be197cbad62ada8115
+size 167
