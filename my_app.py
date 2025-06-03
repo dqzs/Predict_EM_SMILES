@@ -324,6 +324,7 @@ if submit_button:
                     # 加载模型并预测
                     st.info("Loading the model and predicting the emission wavelength...")
                     predictor = TabularPredictor.load("./ag-20250529_123557")
+                    predictor.predict(predict_data)
 
                     # 指定模型列表
                     model_options = ['LightGBM',
@@ -341,7 +342,7 @@ if submit_button:
                     # 获取预测结果
                     predictions_dict = {}
                     for model in model_options:
-                        predictions = predictor.predict(input_df, model=model)
+                        predictions = predictor.predict(predict_data, model=model)
                         predictions_dict[model] = predictions.astype(int).apply(lambda x: f"{x} nm")
                         st.error(f"1")
 
