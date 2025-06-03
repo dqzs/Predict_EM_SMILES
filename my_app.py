@@ -51,23 +51,14 @@ st.markdown(
         margin-top: 10px;
         margin-bottom: 0px !important;
     }
-    .molecule-img {
+    .molecule-container {
         display: block;
         margin: 20px auto;
         max-width: 300px;
         border: 1px solid #ddd;
         border-radius: 5px;
         padding: 5px;
-        background-color: white;
-    }
-    .molecule-svg {
-        background-color: #f9f9f9f9; /* 设置与整体背景一致的背景色 */
-        display: block;
-        margin: 20px auto;
-        max-width: 300px;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        padding: 5px;
+        background-color: transparent; /* 透明背景 */
     }
      /* 针对小屏幕的优化 */
     @media (max-width: 768px) {
@@ -87,7 +78,7 @@ st.markdown(
         .process-text, .molecular-weight {
             font-size: 0.9em; /* 缩小文本字体 */
         }
-        .molecule-img, .molecule-svg {
+        .molecule-container {
             max-width: 200px;
         }
     }
@@ -216,9 +207,6 @@ submit_button = st.button("Submit and Predict", key="predict_button")
 # 指定的描述符列表
 required_descriptors = ["MAXdssC", "VSA_EState7", "SMR_VSA10", "PEOE_VSA8"]
 
-# 分子图像路径
-image_path = None
-
 # 缓存模型加载器以避免重复加载
 @st.cache_resource(show_spinner=False)
 def load_predictor():
@@ -284,8 +272,11 @@ if submit_button:
 
                     # 显示分子结构
                     svg = mol_to_image(mol)
-                    # 使用自定义CSS类确保背景一致
-                    st.markdown(f'<div class="molecule-svg">{svg}</div>', unsafe_allow_html=True)
+                    # 使用透明背景容器
+                    st.markdown(
+                        f'<div class="molecule-container">{svg}</div>', 
+                        unsafe_allow_html=True
+                    )
 
                     # 计算分子量
                     mol_weight = Descriptors.MolWt(mol)
