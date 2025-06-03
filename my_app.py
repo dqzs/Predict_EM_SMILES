@@ -344,7 +344,7 @@ if submit_button:
                     for model in model_options:
                         predictions = predictor.predict(predict_df_1, model=model)
                         predictions_dict[model] = predictions.astype(int).apply(lambda x: f"{x} nm")
-                        st.error(f"1")
+                        
 
                     # 显示预测结果
                     st.write("Prediction Results:")
