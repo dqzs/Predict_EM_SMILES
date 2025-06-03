@@ -342,7 +342,7 @@ if submit_button:
                     # 获取预测结果
                     predictions_dict = {}
                     for model in model_options:
-                        predictions = predictor.predict(predict_df_1, model=model).iloc[0]
+                        predictions = predictor.predict(predict_df_1, model=model)
                         predictions_dict[model] = predictions.astype(int).apply(lambda x: f"{x} nm")
                         st.error(f"1")
 
