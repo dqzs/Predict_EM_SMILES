@@ -357,13 +357,13 @@ if submit_button:
                             except Exception as model_error:
                                 st.warning(f"Model {model} prediction failed: {str(model_error)}")
                                 predictions_dict[model] = "Error"
-
+                    
                         # 显示预测结果
                         st.write("Prediction Results:")
                         st.markdown(
                             "**Note:** WeightedEnsemble_L2 is a meta-model combining predictions from other models.")
                         results_df = pd.DataFrame(predictions_dict)
                         st.dataframe(results_df.iloc[:1,:])
-
+                    
                     except Exception as e:
                         st.error(f"Model loading failed: {str(e)}")
