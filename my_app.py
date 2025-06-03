@@ -325,9 +325,6 @@ if submit_button:
                     st.info("Loading the model and predicting the emission wavelength...")
                     predictor = TabularPredictor.load("./ag-20250529_123557")
 
-
-                    predictor.predict(predict_df)
-
                     # 指定模型列表
                     model_options = ['LightGBM',
                                      'LightGBMXT',
@@ -336,15 +333,16 @@ if submit_button:
                                      'NeuralNetTorch',
                                      'LightGBMLarge',
                                      'MultiModalPredictor',
-                                     #'WeightedEnsemble_L2'
+                                     'WeightedEnsemble_L2'
                                     ]
+                    predict_df_1 = pd.concat([predict_df,predict_df],axis=0)
                     
 
                    
                     # 获取预测结果
                     predictions_dict = {}
                     for model in model_options:
-                        predictions = predictor.predict(predict_data, model=model)
+                        predictions = predictor.predict(predict_df_1, model=model).iloc[0]
                         predictions_dict[model] = predictions.astype(int).apply(lambda x: f"{x} nm")
                         st.error(f"1")
 
