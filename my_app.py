@@ -325,23 +325,23 @@ if submit_button:
                     predictor = TabularPredictor.load("./ag-20250529_123557")
 
                     # 指定模型列表
-                    model_options = [
-                        "LightGBMLarge", "XGBoost", "LightGBM",
-                        "WeightedEnsemble_L2", "LightGBMXT",
-                        "CatBoost", "NeuralNetTorch","MultiModalPredictor",
-                    ]
+                    model_options = ['LightGBM',
+                                     'LightGBMXT',
+                                     'CatBoost',
+                                     'XGBoost',
+                                     'NeuralNetTorch',
+                                     'LightGBMLarge',
+                                     'MultiModalPredictor',
+                                     'WeightedEnsemble_L2'
+                                    ]
+                    
 
                     # 获取预测结果
                     predictions_dict = {}
                     for model in model_options:
-                        try:
-                            predictions = predictor.predict(predict_df, model=model)
-                            predictions_dict[model] = predictions.astype(int).apply(lambda x: f"{x} nm")
-                            st.error(f"1")
-                        except:
-                            # 如果模型不存在，跳过
-                            st.error(f"2")
-                            continue
+                        predictions = predictor.predict(input_df, model=model)
+                        predictions_dict[model] = predictions.astype(int).apply(lambda x: f"{x} nm")
+                        st.error(f"1")
 
                     # 显示预测结果
                     st.write("Prediction Results:")
