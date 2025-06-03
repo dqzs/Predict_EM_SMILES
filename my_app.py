@@ -322,13 +322,13 @@ if submit_button:
 
                     # 加载模型并预测
                     st.info("Loading the model and predicting the emission wavelength...")
-                    predictor = TabularPredictor.load("./ag-20250508_124428")
+                    predictor = TabularPredictor.load("./ag-20250529_123557")
 
                     # 指定模型列表
                     model_options = [
                         "LightGBMLarge", "XGBoost", "LightGBM",
                         "WeightedEnsemble_L2", "LightGBMXT",
-                        "CatBoost", "NeuralNetTorch"
+                        "CatBoost", "NeuralNetTorch","MultiModalPredictor",
                     ]
 
                     # 获取预测结果
