@@ -1,7 +1,6 @@
 import streamlit as st
 from rdkit import Chem
 from rdkit.Chem import Descriptors, Draw, AllChem
-from rdkit.Chem.Draw import MolDraw2DSVG
 from mordred import Calculator, descriptors
 import pandas as pd
 from autogluon.tabular import TabularPredictor
@@ -61,7 +60,7 @@ st.markdown(
         background-color: white;
     }
     .molecule-svg {
-        background-color: #f9f9f9f9; /* 设置与整体背景一致的背景色 */
+        background-color: transparent; /* 设置背景为透明 */
         display: block;
         margin: 20px auto;
         max-width: 300px;
@@ -69,7 +68,7 @@ st.markdown(
         border-radius: 5px;
         padding: 5px;
     }
-     /* 针对小屏幕的优化 */
+    /* 针对小屏幕的优化 */
     @media (max-width: 768px) {
         .rounded-container {
             padding: 10px; /* 减少内边距 */
@@ -103,7 +102,7 @@ st.markdown(
         <h2>Predict Organic Fluorescence <br>Emission Wavelengths</h2>
         <blockquote>
             1. This website aims to quickly predict the emission wavelength of organic molecules based on their structure (SMILES) and solvent using machine learning models.<br>
-            2. Code and data are available at <a href='https://github.com/dqzs/Fluorescence-Emission-Wavelength-Prediction' target='_blank'>https://github.com/dqzs/Fluorescence-Emission-Wavelength-Prediction</a>.
+            2. Code and data are available at <a href='<url id="d0vf3vv6rtpeof5sdre0" type="url" status="parsed" title="GitHub - dqzs/Fluorescence-Emission-Wavelength-Prediction: Autogluon was used to train the model and make predictions on the molecule" wc="842">https://github.com/dqzs/Fluorescence-Emission-Wavelength-Prediction</url> ' target='_blank'><url id="d0vf3vv6rtpeof5sdre0" type="url" status="parsed" title="GitHub - dqzs/Fluorescence-Emission-Wavelength-Prediction: Autogluon was used to train the model and make predictions on the molecule" wc="842">https://github.com/dqzs/Fluorescence-Emission-Wavelength-Prediction</url> </a>.
         </blockquote>
     </div>
     """,
@@ -216,9 +215,6 @@ submit_button = st.button("Submit and Predict", key="predict_button")
 # 指定的描述符列表
 required_descriptors = ["MAXdssC", "VSA_EState7", "SMR_VSA10", "PEOE_VSA8"]
 
-# 分子图像路径
-image_path = None
-
 # 缓存模型加载器以避免重复加载
 @st.cache_resource(show_spinner=False)
 def load_predictor():
@@ -228,8 +224,7 @@ def load_predictor():
 def mol_to_image(mol, size=(300, 300)):
     """将分子转换为透明背景的SVG图像"""
     d2d = Draw.MolDraw2DSVG(size[0], size[1])
-    # 设置透明背景
-    d2d.drawOptions().background = None
+    d2d.drawOptions().background = None  # 设置背景为透明
     d2d.DrawMolecule(mol)
     d2d.FinishDrawing()
     svg = d2d.GetDrawingText()
@@ -352,12 +347,12 @@ if submit_button:
                                          'MultiModalPredictor',
                                          'WeightedEnsemble_L2'
                                         ]
-
+                        predict_df_1 = pd.concat([predict_df,predict_df],axis=0)
                         # 获取预测结果
                         predictions_dict = {}
                         for model in model_options:
                             try:
-                                predictions = predictor.predict(predict_df, model=model)
+                                predictions = predictor.predict(predict_df_1, model=model)
                                 predictions_dict[model] = predictions.astype(int).apply(lambda x: f"{x} nm")
                             except Exception as model_error:
                                 st.warning(f"Model {model} prediction failed: {str(model_error)}")
@@ -368,12 +363,7 @@ if submit_button:
                         st.markdown(
                             "**Note:** WeightedEnsemble_L2 is a meta-model combining predictions from other models.")
                         results_df = pd.DataFrame(predictions_dict)
-                        st.dataframe(results_df)
+                        st.dataframe(results_df.iloc[:1,:])
 
                     except Exception as e:
                         st.error(f"Model loading failed: {str(e)}")
-
-                else:
-                    st.error("Invalid SMILES input. Please check the format.")
-            except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
