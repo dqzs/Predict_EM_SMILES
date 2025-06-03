@@ -320,13 +320,11 @@ if submit_button:
                     }
                     
                     predict_df = pd.DataFrame(predict_data)
-                    predict_df["SMILES"] = predict_data["SMILES"].astype("category")
                     
                     # 加载模型并预测
                     st.info("Loading the model and predicting the emission wavelength...")
                     predictor = TabularPredictor.load("./ag-20250529_123557")
-                    st.write("Expected features by model:")
-                    st.write(predictor.feature_metadata)
+
 
                     predictor.predict(predict_df)
 
