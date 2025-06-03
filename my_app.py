@@ -352,12 +352,12 @@ if submit_button:
                                          'MultiModalPredictor',
                                          'WeightedEnsemble_L2'
                                         ]
-
+                        predict_df_1 = pd.concat([predict_df,predict_df],axis=0)
                         # 获取预测结果
                         predictions_dict = {}
                         for model in model_options:
                             try:
-                                predictions = predictor.predict(predict_df, model=model)
+                                predictions = predictor.predict(predict_df_1, model=model)
                                 predictions_dict[model] = predictions.astype(int).apply(lambda x: f"{x} nm")
                             except Exception as model_error:
                                 st.warning(f"Model {model} prediction failed: {str(model_error)}")
@@ -368,7 +368,7 @@ if submit_button:
                         st.markdown(
                             "**Note:** WeightedEnsemble_L2 is a meta-model combining predictions from other models.")
                         results_df = pd.DataFrame(predictions_dict)
-                        st.dataframe(results_df)
+                        st.dataframe(results_df.iloc[:1,:])
 
                     except Exception as e:
                         st.error(f"Model loading failed: {str(e)}")
