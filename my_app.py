@@ -300,7 +300,7 @@ if submit_button:
                     }
 
                     input_df = pd.DataFrame(input_data)
-                    
+                    input_df["SMILES"] = input_df["SMILES"].astype("text")
                     # 显示输入数据
                     st.write("Input Data:")
                     st.dataframe(input_df)
