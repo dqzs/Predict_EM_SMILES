@@ -60,6 +60,15 @@ st.markdown(
         padding: 5px;
         background-color: white;
     }
+    .molecule-svg {
+        background-color: #f9f9f9f9; /* 设置与整体背景一致的背景色 */
+        display: block;
+        margin: 20px auto;
+        max-width: 300px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 5px;
+    }
      /* 针对小屏幕的优化 */
     @media (max-width: 768px) {
         .rounded-container {
@@ -78,7 +87,7 @@ st.markdown(
         .process-text, .molecular-weight {
             font-size: 0.9em; /* 缩小文本字体 */
         }
-        .molecule-img {
+        .molecule-img, .molecule-svg {
             max-width: 200px;
         }
     }
@@ -210,15 +219,21 @@ required_descriptors = ["MAXdssC", "VSA_EState7", "SMR_VSA10", "PEOE_VSA8"]
 # 分子图像路径
 image_path = None
 
+# 缓存模型加载器以避免重复加载
+@st.cache_resource(show_spinner=False)
+def load_predictor():
+    """缓存模型加载，避免重复加载导致内存溢出"""
+    return TabularPredictor.load("./ag-20250529_123557")
 
 def mol_to_image(mol, size=(300, 300)):
-    """将分子转换为图像并返回base64编码"""
+    """将分子转换为透明背景的SVG图像"""
     d2d = Draw.MolDraw2DSVG(size[0], size[1])
+    # 设置透明背景
+    d2d.drawOptions().background = None
     d2d.DrawMolecule(mol)
     d2d.FinishDrawing()
     svg = d2d.GetDrawingText()
     return svg
-
 
 def get_descriptors(mol):
     """获取指定的分子描述符"""
@@ -250,7 +265,6 @@ def get_descriptors(mol):
         **rdkit_descs
     }
 
-
 # 如果点击提交按钮
 if submit_button:
     if not smiles:
@@ -270,7 +284,8 @@ if submit_button:
 
                     # 显示分子结构
                     svg = mol_to_image(mol)
-                    st.markdown(f'<div class="molecule-img">{svg}</div>', unsafe_allow_html=True)
+                    # 使用自定义CSS类确保背景一致
+                    st.markdown(f'<div class="molecule-svg">{svg}</div>', unsafe_allow_html=True)
 
                     # 计算分子量
                     mol_weight = Descriptors.MolWt(mol)
@@ -323,35 +338,40 @@ if submit_button:
                     
                     # 加载模型并预测
                     st.info("Loading the model and predicting the emission wavelength...")
-                    predictor = TabularPredictor.load("./ag-20250529_123557")
-
-                    # 指定模型列表
-                    model_options = ['LightGBM',
-                                     'LightGBMXT',
-                                     'CatBoost',
-                                     'XGBoost',
-                                     'NeuralNetTorch',
-                                     'LightGBMLarge',
-                                     'MultiModalPredictor',
-                                     'WeightedEnsemble_L2'
-                                    ]
-                    predict_df_1 = pd.concat([predict_df,predict_df],axis=0)
-                    
-
-                   
-                    # 获取预测结果
-                    predictions_dict = {}
-                    for model in model_options:
-                        predictions = predictor.predict(predict_df_1, model=model)
-                        predictions_dict[model] = predictions.astype(int).apply(lambda x: f"{x} nm")
+                    try:
+                        # 使用缓存的模型加载方式
+                        predictor = load_predictor()
                         
+                        # 指定模型列表
+                        model_options = ['LightGBM',
+                                         'LightGBMXT',
+                                         'CatBoost',
+                                         'XGBoost',
+                                         'NeuralNetTorch',
+                                         'LightGBMLarge',
+                                         'MultiModalPredictor',
+                                         'WeightedEnsemble_L2'
+                                        ]
 
-                    # 显示预测结果
-                    st.write("Prediction Results:")
-                    st.markdown(
-                        "**Note:** WeightedEnsemble_L2 is a meta-model combining predictions from other models.")
-                    results_df = pd.DataFrame(predictions_dict)
-                    st.dataframe(results_df.iloc[:1,:])
+                        # 获取预测结果
+                        predictions_dict = {}
+                        for model in model_options:
+                            try:
+                                predictions = predictor.predict(predict_df, model=model)
+                                predictions_dict[model] = predictions.astype(int).apply(lambda x: f"{x} nm")
+                            except Exception as model_error:
+                                st.warning(f"Model {model} prediction failed: {str(model_error)}")
+                                predictions_dict[model] = "Error"
+
+                        # 显示预测结果
+                        st.write("Prediction Results:")
+                        st.markdown(
+                            "**Note:** WeightedEnsemble_L2 is a meta-model combining predictions from other models.")
+                        results_df = pd.DataFrame(predictions_dict)
+                        st.dataframe(results_df)
+
+                    except Exception as e:
+                        st.error(f"Model loading failed: {str(e)}")
 
                 else:
                     st.error("Invalid SMILES input. Please check the format.")
