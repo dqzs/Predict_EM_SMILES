@@ -320,6 +320,7 @@ if submit_button:
                     }
                     
                     predict_df = pd.DataFrame(predict_data)
+                    predict_df["SMILES"] = predict_data["SMILES"].astype("category")
                     
                     # 加载模型并预测
                     st.info("Loading the model and predicting the emission wavelength...")
