@@ -320,8 +320,7 @@ if submit_button:
                     }
                     
                     predict_df = pd.DataFrame(predict_data)
-                    feature_metadata = FeatureMetadata.from_df(predict_df)
-                    feature_metadata = feature_metadata.add_special_types({"SMILES": ['text']})
+                    
                     # 加载模型并预测
                     st.info("Loading the model and predicting the emission wavelength...")
                     predictor = TabularPredictor.load("./ag-20250529_123557")
@@ -334,7 +333,7 @@ if submit_button:
                                      'NeuralNetTorch',
                                      'LightGBMLarge',
                                      'MultiModalPredictor',
-                                     'WeightedEnsemble_L2'
+                                     #'WeightedEnsemble_L2'
                                     ]
                     
 
