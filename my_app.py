@@ -8,7 +8,7 @@ from autogluon.tabular import TabularPredictor
 import tempfile
 import base64
 from io import BytesIO
-
+from autogluon.tabular import FeatureMetadata
 
 # 添加 CSS 样式
 st.markdown(
@@ -300,13 +300,14 @@ if submit_button:
                     }
 
                     input_df = pd.DataFrame(input_data)
-
+                    
                     # 显示输入数据
                     st.write("Input Data:")
                     st.dataframe(input_df)
 
                     # 创建预测用数据框
                     predict_data = {
+                        "SMILES": [smiles],
                         "Et30": [solvent_params["Et30"]],
                         "SP": [solvent_params["SP"]],
                         "SdP": [solvent_params["SdP"]],
@@ -317,9 +318,10 @@ if submit_button:
                         "SMR_VSA10": [desc_values["SMR_VSA10"]],
                         "PEOE_VSA8": [desc_values["PEOE_VSA8"]]
                     }
-
+                    
                     predict_df = pd.DataFrame(predict_data)
-
+                    feature_metadata = FeatureMetadata.from_df(predict_df)
+                    feature_metadata = feature_metadata.add_special_types({"SMILES": ['text']})
                     # 加载模型并预测
                     st.info("Loading the model and predicting the emission wavelength...")
                     predictor = TabularPredictor.load("./ag-20250529_123557")
@@ -336,6 +338,7 @@ if submit_button:
                                     ]
                     
 
+                   
                     # 获取预测结果
                     predictions_dict = {}
                     for model in model_options:
