@@ -287,11 +287,22 @@ def get_descriptors(mol):
             "PEOE_VSA8": 0.0,
         }
 
-    # 计算Mordred描述符
+    # 计算Mordred描述符 - 需要3D结构
     try:
+        # 创建分子的3D副本
+        mol_3d = Chem.Mol(mol)
+        mol_3d = Chem.AddHs(mol_3d)  # 添加氢原子
+        AllChem.EmbedMolecule(mol_3d)  # 生成3D坐标
+        AllChem.MMFFOptimizeMolecule(mol_3d)  # 优化几何结构
+        
+        # 计算Mordred描述符
         calc = get_mordred_calculator()
-        mordred_desc = calc(mol)
-        maxdssc = mordred_desc["MAXdssC"] if "MAXdssC" in mordred_desc else 0.0
+        mordred_desc = calc(mol_3d)
+        
+        # 获取MAXdssC值
+        maxdssc = mordred_desc["MAXdssC"]
+        if pd.isna(maxdssc):
+            maxdssc = 0.0
     except Exception as e:
         st.warning(f"Mordred descriptor calculation error: {str(e)}")
         maxdssc = 0.0
@@ -300,6 +311,7 @@ def get_descriptors(mol):
         "MAXdssC": maxdssc,
         **rdkit_descs
     }
+
 
 # 如果点击提交按钮
 if submit_button:
