@@ -223,15 +223,15 @@ def get_mordred_calculator():
     return Calculator(descriptors, ignore_3D=True)
 
 def mol_to_image(mol, size=(300, 300)):
-    """将分子转换为透明背景的SVG图像，移除边框和多余空白"""
+    """将分子转换为背景颜色为 #f9f9f9f9 的SVG图像"""
     # 创建绘图对象
     d2d = MolDraw2DSVG(size[0], size[1])
     
     # 获取绘图选项
     draw_options = d2d.drawOptions()
     
-    # 设置透明背景
-    draw_options.background = None
+    # 设置背景颜色为 #f9f9f9f9
+    draw_options.background = '#f9f9f9'
     
     # 移除所有边框和填充
     draw_options.padding = 0.0
@@ -243,7 +243,7 @@ def mol_to_image(mol, size=(300, 300)):
     draw_options.addStereoAnnotation = False
     draw_options.bondLineWidth = 1.5
     
-    # 关键：禁用所有边框（包括分子周围的边框）
+    # 禁用所有边框
     draw_options.includeMetadata = False
     
     # 绘制分子
@@ -253,23 +253,21 @@ def mol_to_image(mol, size=(300, 300)):
     # 获取SVG内容
     svg = d2d.GetDrawingText()
     
-    # 移除SVG中所有可能存在的背景和边框元素
-    # 1. 移除背景矩形
-    svg = re.sub(r'<rect style="opacity:1.0[^>]*>', '', svg, flags=re.DOTALL)
-    
-    # 2. 移除边框矩形（通常是黑色边框）
+    # 移除SVG中所有可能存在的边框元素
+    # 1. 移除黑色边框矩形
     svg = re.sub(r'<rect [^>]*stroke:black[^>]*>', '', svg, flags=re.DOTALL)
     svg = re.sub(r'<rect [^>]*stroke:#000000[^>]*>', '', svg, flags=re.DOTALL)
     
-    # 3. 移除所有空的rect元素
+    # 2. 移除所有空的rect元素
     svg = re.sub(r'<rect[^>]*/>', '', svg, flags=re.DOTALL)
     
-    # 4. 确保viewBox正确设置
+    # 3. 确保viewBox正确设置
     if 'viewBox' in svg:
         # 设置新的viewBox以移除边距
         svg = re.sub(r'viewBox="[^"]+"', f'viewBox="0 0 {size[0]} {size[1]}"', svg)
     
     return svg
+
 
 @st.cache_data(max_entries=10)  # 缓存最多10个分子的描述符计算
 def get_descriptors(mol):
@@ -325,7 +323,7 @@ if submit_button:
                 # 显示分子结构 - 使用透明背景容器
                 svg = mol_to_image(mol)
                 st.markdown(
-                    f'<div class="molecule-container" style="background-color: transparent; padding: 0; border: none;">{svg}</div>', 
+                    f'<div class="molecule-container" style="background-color: #f9f9f9; padding: 0; border: none;">{svg}</div>', 
                     unsafe_allow_html=True
                 )
                 # 计算分子量
