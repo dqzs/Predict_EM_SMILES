@@ -223,17 +223,28 @@ def get_mordred_calculator():
     return Calculator(descriptors, ignore_3D=True)
 
 def mol_to_image(mol, size=(300, 300)):
-    """将分子转换为透明背景的SVG图像，并移除多余空白"""
+    """将分子转换为透明背景的SVG图像，移除边框和多余空白"""
     # 创建绘图对象
     d2d = MolDraw2DSVG(size[0], size[1])
     
-    # 设置绘图选项 - 透明背景
+    # 获取绘图选项
     draw_options = d2d.drawOptions()
+    
+    # 设置透明背景
     draw_options.background = None
     
-    # 移除边框间距的关键设置 - 使用正确的属性
-    draw_options.padding = 0.0  # 移除分子周围的填充
-    draw_options.additionalBondPadding = 0.0  # 额外的键间距
+    # 移除所有边框和填充
+    draw_options.padding = 0.0
+    draw_options.additionalBondPadding = 0.0
+    
+    # 移除原子标签的边框
+    draw_options.annotationFontScale = 1.0
+    draw_options.addAtomIndices = False
+    draw_options.addStereoAnnotation = False
+    draw_options.bondLineWidth = 1.5
+    
+    # 关键：禁用所有边框（包括分子周围的边框）
+    draw_options.includeMetadata = False
     
     # 绘制分子
     d2d.DrawMolecule(mol)
@@ -242,21 +253,21 @@ def mol_to_image(mol, size=(300, 300)):
     # 获取SVG内容
     svg = d2d.GetDrawingText()
     
-    # 移除SVG中可能存在的背景矩形（确保完全透明）
-    if '<rect style="opacity:1.0' in svg:
-        # 使用正则表达式移除矩形
-        svg = re.sub(r'<rect style="opacity:1.0.*?/>', '', svg, flags=re.DOTALL)
+    # 移除SVG中所有可能存在的背景和边框元素
+    # 1. 移除背景矩形
+    svg = re.sub(r'<rect style="opacity:1.0[^>]*>', '', svg, flags=re.DOTALL)
     
-    # 移除viewBox属性中的多余空间
+    # 2. 移除边框矩形（通常是黑色边框）
+    svg = re.sub(r'<rect [^>]*stroke:black[^>]*>', '', svg, flags=re.DOTALL)
+    svg = re.sub(r'<rect [^>]*stroke:#000000[^>]*>', '', svg, flags=re.DOTALL)
+    
+    # 3. 移除所有空的rect元素
+    svg = re.sub(r'<rect[^>]*/>', '', svg, flags=re.DOTALL)
+    
+    # 4. 确保viewBox正确设置
     if 'viewBox' in svg:
-        # 解析当前viewBox
-        viewbox_match = re.search(r'viewBox="([^"]+)"', svg)
-        if viewbox_match:
-            viewbox = viewbox_match.group(1).split()
-            if len(viewbox) == 4:
-                # 设置新的viewBox以移除边距
-                new_viewbox = f"0 0 {size[0]} {size[1]}"
-                svg = svg.replace(viewbox_match.group(0), f'viewBox="{new_viewbox}"')
+        # 设置新的viewBox以移除边距
+        svg = re.sub(r'viewBox="[^"]+"', f'viewBox="0 0 {size[0]} {size[1]}"', svg)
     
     return svg
 
@@ -314,7 +325,7 @@ if submit_button:
                 # 显示分子结构 - 使用透明背景容器
                 svg = mol_to_image(mol)
                 st.markdown(
-                    f'<div class="molecule-container" style="background-color: transparent; padding: 0; overflow: visible;">{svg}</div>', 
+                    f'<div class="molecule-container" style="background-color: transparent; padding: 0; border: none;">{svg}</div>', 
                     unsafe_allow_html=True
                 )
                 # 计算分子量
