@@ -10,6 +10,8 @@ import base64
 from io import BytesIO
 from autogluon.tabular import FeatureMetadata
 import gc  # 添加垃圾回收模块
+import re  # 添加正则表达式模块用于处理SVG
+
 
 # 添加 CSS 样式
 st.markdown(
@@ -221,12 +223,30 @@ def get_mordred_calculator():
     return Calculator(descriptors, ignore_3D=True)
 
 def mol_to_image(mol, size=(300, 300)):
-    """将分子转换为透明背景的SVG图像"""
-    d2d = Draw.MolDraw2DSVG(size[0], size[1])
-    d2d.drawOptions().background = None
+    """将分子转换为透明背景的SVG图像，并移除多余空白"""
+    # 创建绘图对象
+    d2d = MolDraw2DSVG(size[0], size[1])
+    
+    # 设置绘图选项 - 透明背景
+    draw_options = d2d.drawOptions()
+    draw_options.background = None
+    
+    # 移除边框间距的关键设置
+    d2d.SetMargin(0)  # 移除图像边缘的空白
+    draw_options.padding = 0.0  # 移除分子周围的填充
+    
+    # 绘制分子
     d2d.DrawMolecule(mol)
     d2d.FinishDrawing()
-    return d2d.GetDrawingText()
+    
+    # 获取SVG内容
+    svg = d2d.GetDrawingText()
+    
+    # 移除SVG中可能存在的背景矩形（确保完全透明）
+    if '<rect style="opacity:1.0' in svg:
+        svg = re.sub(r'<rect style="opacity:1.0.*?/>', '', svg, flags=re.DOTALL)
+    
+    return svg
 
 @st.cache_data(max_entries=10)  # 缓存最多10个分子的描述符计算
 def get_descriptors(mol):
@@ -279,10 +299,10 @@ if submit_button:
                 mol = Chem.AddHs(mol)
                 AllChem.Compute2DCoords(mol)
 
-                # 显示分子结构
+                # 显示分子结构 - 使用透明背景容器
                 svg = mol_to_image(mol)
                 st.markdown(
-                    f'<div class="molecule-container">{svg}</div>', 
+                    f'<div class="molecule-container" style="background-color: transparent; padding: 0;">{svg}</div>', 
                     unsafe_allow_html=True
                 )
 
