@@ -9,6 +9,7 @@ import tempfile
 import base64
 from io import BytesIO
 from autogluon.tabular import FeatureMetadata
+import gc  # 添加垃圾回收模块
 
 # 添加 CSS 样式
 st.markdown(
@@ -208,23 +209,28 @@ submit_button = st.button("Submit and Predict", key="predict_button")
 required_descriptors = ["MAXdssC", "VSA_EState7", "SMR_VSA10", "PEOE_VSA8"]
 
 # 缓存模型加载器以避免重复加载
-@st.cache_resource(show_spinner=False)
+@st.cache_resource(show_spinner=False, max_entries=1)  # 限制只缓存一个实例
 def load_predictor():
     """缓存模型加载，避免重复加载导致内存溢出"""
     return TabularPredictor.load("./ag-20250529_123557")
 
+# 缓存 Mordred 计算器
+@st.cache_resource
+def get_mordred_calculator():
+    """创建并缓存 Mordred 计算器"""
+    return Calculator(descriptors, ignore_3D=True)
+
 def mol_to_image(mol, size=(300, 300)):
     """将分子转换为透明背景的SVG图像"""
     d2d = Draw.MolDraw2DSVG(size[0], size[1])
-    # 设置透明背景
     d2d.drawOptions().background = None
     d2d.DrawMolecule(mol)
     d2d.FinishDrawing()
-    svg = d2d.GetDrawingText()
-    return svg
+    return d2d.GetDrawingText()
 
+@st.cache_data(max_entries=10)  # 缓存最多10个分子的描述符计算
 def get_descriptors(mol):
-    """获取指定的分子描述符"""
+    """获取指定的分子描述符并缓存结果"""
     # 计算RDKit描述符
     try:
         rdkit_descs = {
@@ -232,8 +238,8 @@ def get_descriptors(mol):
             "SMR_VSA10": Descriptors.SMR_VSA10(mol),
             "PEOE_VSA8": Descriptors.PEOE_VSA8(mol),
         }
-    except:
-        # 如果计算失败，使用默认值
+    except Exception as e:
+        st.warning(f"RDKit descriptor calculation error: {str(e)}")
         rdkit_descs = {
             "VSA_EState7": 0.0,
             "SMR_VSA10": 0.0,
@@ -242,10 +248,11 @@ def get_descriptors(mol):
 
     # 计算Mordred描述符
     try:
-        calc = Calculator(descriptors, ignore_3D=True)
+        calc = get_mordred_calculator()
         mordred_desc = calc(mol)
         maxdssc = mordred_desc["MAXdssC"] if "MAXdssC" in mordred_desc else 0.0
-    except:
+    except Exception as e:
+        st.warning(f"Mordred descriptor calculation error: {str(e)}")
         maxdssc = 0.0
 
     return {
@@ -263,108 +270,105 @@ if submit_button:
         with st.spinner("Processing molecule and making predictions..."):
             try:
                 # 处理SMILES输入
-                st.markdown('<div class="process-text">Processing SMILES input...</div>', unsafe_allow_html=True)
                 mol = Chem.MolFromSmiles(smiles)
-                if mol:
-                    # 添加H原子并生成2D坐标
-                    mol = Chem.AddHs(mol)
-                    AllChem.Compute2DCoords(mol)
+                if not mol:
+                    st.error("Invalid SMILES input. Please check the format.")
+                    st.stop()
+                
+                # 添加H原子并生成2D坐标
+                mol = Chem.AddHs(mol)
+                AllChem.Compute2DCoords(mol)
 
-                    # 显示分子结构
-                    svg = mol_to_image(mol)
-                    # 使用透明背景容器
-                    st.markdown(
-                        f'<div class="molecule-container">{svg}</div>', 
-                        unsafe_allow_html=True
-                    )
+                # 显示分子结构
+                svg = mol_to_image(mol)
+                st.markdown(
+                    f'<div class="molecule-container">{svg}</div>', 
+                    unsafe_allow_html=True
+                )
 
-                    # 计算分子量
-                    mol_weight = Descriptors.MolWt(mol)
-                    st.markdown(f'<div class="molecular-weight">Molecular Weight: {mol_weight:.2f} g/mol</div>',
-                                unsafe_allow_html=True)
+                # 计算分子量
+                mol_weight = Descriptors.MolWt(mol)
+                st.markdown(f'<div class="molecular-weight">Molecular Weight: {mol_weight:.2f} g/mol</div>',
+                            unsafe_allow_html=True)
 
-                    # 获取溶剂参数
-                    solvent_params = solvent_data[solvent]
+                # 获取溶剂参数
+                solvent_params = solvent_data[solvent]
 
-                    # 计算指定描述符
-                    st.info("Calculating molecular descriptors...")
-                    desc_values = get_descriptors(mol)
+                # 计算指定描述符
+                desc_values = get_descriptors(mol)
 
-                    # 创建输入数据表
-                    input_data = {
-                        "SMILES": [smiles],
-                        "Et30": [solvent_params["Et30"]],
-                        "SP": [solvent_params["SP"]],
-                        "SdP": [solvent_params["SdP"]],
-                        "SA": [solvent_params["SA"]],
-                        "SB": [solvent_params["SB"]],
-                        "MAXdssC": [desc_values["MAXdssC"]],
-                        "VSA_EState7": [desc_values["VSA_EState7"]],
-                        "SMR_VSA10": [desc_values["SMR_VSA10"]],
-                        "PEOE_VSA8": [desc_values["PEOE_VSA8"]],
-                        "image": ["Molecular Structure"]
-                    }
+                # 创建输入数据表
+                input_data = {
+                    "SMILES": [smiles],
+                    "Et30": [solvent_params["Et30"]],
+                    "SP": [solvent_params["SP"]],
+                    "SdP": [solvent_params["SdP"]],
+                    "SA": [solvent_params["SA"]],
+                    "SB": [solvent_params["SB"]],
+                    "MAXdssC": [desc_values["MAXdssC"]],
+                    "VSA_EState7": [desc_values["VSA_EState7"]],
+                    "SMR_VSA10": [desc_values["SMR_VSA10"]],
+                    "PEOE_VSA8": [desc_values["PEOE_VSA8"]],
+                }
 
-                    input_df = pd.DataFrame(input_data)
+                input_df = pd.DataFrame(input_data)
+                
+                # 显示输入数据
+                st.write("Input Data:")
+                st.dataframe(input_df)
+
+                # 创建预测用数据框
+                predict_df = pd.DataFrame({
+                    "SMILES": [smiles],
+                    "Et30": [solvent_params["Et30"]],
+                    "SP": [solvent_params["SP"]],
+                    "SdP": [solvent_params["SdP"]],
+                    "SA": [solvent_params["SA"]],
+                    "SB": [solvent_params["SB"]],
+                    "MAXdssC": [desc_values["MAXdssC"]],
+                    "VSA_EState7": [desc_values["VSA_EState7"]],
+                    "SMR_VSA10": [desc_values["SMR_VSA10"]],
+                    "PEOE_VSA8": [desc_values["PEOE_VSA8"]]
+                })
+                
+                # 加载模型并预测
+                try:
+                    # 使用缓存的模型加载方式
+                    predictor = load_predictor()
                     
-                    # 显示输入数据
-                    st.write("Input Data:")
-                    st.dataframe(input_df)
-
-                    # 创建预测用数据框
-                    predict_data = {
-                        "SMILES": [smiles],
-                        "Et30": [solvent_params["Et30"]],
-                        "SP": [solvent_params["SP"]],
-                        "SdP": [solvent_params["SdP"]],
-                        "SA": [solvent_params["SA"]],
-                        "SB": [solvent_params["SB"]],
-                        "MAXdssC": [desc_values["MAXdssC"]],
-                        "VSA_EState7": [desc_values["VSA_EState7"]],
-                        "SMR_VSA10": [desc_values["SMR_VSA10"]],
-                        "PEOE_VSA8": [desc_values["PEOE_VSA8"]]
-                    }
-                    
-                    predict_df = pd.DataFrame(predict_data)
-                    
-                    # 加载模型并预测
-                    st.info("Loading the model and predicting the emission wavelength...")
-                    try:
-                        # 使用缓存的模型加载方式
-                        predictor = load_predictor()
-                        
-                        # 指定模型列表
-                        model_options = ['LightGBM',
+                    # 只使用最关键的模型进行预测，减少内存占用
+                    essential_models = ['LightGBM',
                                          'LightGBMXT',
                                          'CatBoost',
                                          'XGBoost',
                                          'NeuralNetTorch',
                                          'LightGBMLarge',
                                          'MultiModalPredictor',
-                                         'WeightedEnsemble_L2'
-                                        ]
-                        predict_df_1 = pd.concat([predict_df,predict_df],axis=0)
-                        # 获取预测结果
-                        predictions_dict = {}
-                        for model in model_options:
-                            try:
-                                predictions = predictor.predict(predict_df_1, model=model)
-                                predictions_dict[model] = predictions.astype(int).apply(lambda x: f"{x} nm")
-                            except Exception as model_error:
-                                st.warning(f"Model {model} prediction failed: {str(model_error)}")
-                                predictions_dict[model] = "Error"
+                                         'WeightedEnsemble_L2']
+                    predict_df_1 = pd.concat([predict_df,predict_df],axis=0)
+                    predictions_dict = {}
+                    
+                    for model in essential_models:
+                        try:
+                            predictions = predictor.predict(predict_df_1, model=model)
+                            predictions_dict[model] = predictions.astype(int).apply(lambda x: f"{x} nm")
+                        except Exception as model_error:
+                            st.warning(f"Model {model} prediction failed: {str(model_error)}")
+                            predictions_dict[model] = "Error"
 
-                        # 显示预测结果
-                        st.write("Prediction Results:")
-                        st.markdown(
-                            "**Note:** WeightedEnsemble_L2 is a meta-model combining predictions from other models.")
-                        results_df = pd.DataFrame(predictions_dict)
-                        st.dataframe(results_df.iloc[:1,:])
+                    # 显示预测结果
+                    st.write("Prediction Results (Essential Models):")
+                    st.markdown(
+                        "**Note:** WeightedEnsemble_L2 is a meta-model combining predictions from other models.")
+                    results_df = pd.DataFrame(predictions_dict)
+                    st.dataframe(results_df.iloc[:1,:])
+                    
+                    # 主动释放内存
+                    del predictor
+                    gc.collect()
 
-                    except Exception as e:
-                        st.error(f"Model loading failed: {str(e)}")
+                except Exception as e:
+                    st.error(f"Model loading failed: {str(e)}")
 
-                else:
-                    st.error("Invalid SMILES input. Please check the format.")
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
