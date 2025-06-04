@@ -270,9 +270,17 @@ def mol_to_image(mol, size=(300, 300)):
 
 
 @st.cache_data(max_entries=10)  # 缓存最多10个分子的描述符计算
-def get_descriptors(mol):
+def get_descriptors(smiles_str):
     """获取指定的分子描述符并缓存结果"""
-    # 计算RDKit描述符
+    # 从SMILES创建分子
+    mol = Chem.MolFromSmiles(smiles_str)
+    if not mol:
+        return None
+    
+    # 添加氢原子
+    mol = Chem.AddHs(mol)
+    
+    # 计算RDKit描述符 - 使用添加了H的分子
     try:
         rdkit_descs = {
             "VSA_EState7": Descriptors.VSA_EState7(mol),
@@ -291,7 +299,7 @@ def get_descriptors(mol):
     try:
         # 创建分子的3D副本
         mol_3d = Chem.Mol(mol)
-        mol_3d = Chem.AddHs(mol_3d)  # 添加氢原子
+        mol_3d = Chem.AddHs(mol_3d)  # 确保添加氢原子
         AllChem.EmbedMolecule(mol_3d)  # 生成3D坐标
         AllChem.MMFFOptimizeMolecule(mol_3d)  # 优化几何结构
         
@@ -313,6 +321,7 @@ def get_descriptors(mol):
     }
 
 
+
 # 如果点击提交按钮
 if submit_button:
     if not smiles:
@@ -332,7 +341,7 @@ if submit_button:
                 mol = Chem.AddHs(mol)
                 AllChem.Compute2DCoords(mol)
 
-                # 显示分子结构 - 使用透明背景容器
+                # 显示分子结构
                 svg = mol_to_image(mol)
                 st.markdown(
                     f'<div class="molecule-container" style="background-color: #f9f9f9; padding: 0; border: none;">{svg}</div>', 
@@ -346,8 +355,8 @@ if submit_button:
                 # 获取溶剂参数
                 solvent_params = solvent_data[solvent]
 
-                # 计算指定描述符
-                desc_values = get_descriptors(mol)
+                # 计算指定描述符 - 现在传递SMILES字符串
+                desc_values = get_descriptors(smiles)
 
                 # 创建输入数据表
                 input_data = {
