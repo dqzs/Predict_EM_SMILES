@@ -231,9 +231,9 @@ def mol_to_image(mol, size=(300, 300)):
     draw_options = d2d.drawOptions()
     draw_options.background = None
     
-    # 移除边框间距的关键设置
-    d2d.SetMargin(0)  # 移除图像边缘的空白
+    # 移除边框间距的关键设置 - 使用正确的属性
     draw_options.padding = 0.0  # 移除分子周围的填充
+    draw_options.additionalBondPadding = 0.0  # 额外的键间距
     
     # 绘制分子
     d2d.DrawMolecule(mol)
@@ -244,7 +244,19 @@ def mol_to_image(mol, size=(300, 300)):
     
     # 移除SVG中可能存在的背景矩形（确保完全透明）
     if '<rect style="opacity:1.0' in svg:
+        # 使用正则表达式移除矩形
         svg = re.sub(r'<rect style="opacity:1.0.*?/>', '', svg, flags=re.DOTALL)
+    
+    # 移除viewBox属性中的多余空间
+    if 'viewBox' in svg:
+        # 解析当前viewBox
+        viewbox_match = re.search(r'viewBox="([^"]+)"', svg)
+        if viewbox_match:
+            viewbox = viewbox_match.group(1).split()
+            if len(viewbox) == 4:
+                # 设置新的viewBox以移除边距
+                new_viewbox = f"0 0 {size[0]} {size[1]}"
+                svg = svg.replace(viewbox_match.group(0), f'viewBox="{new_viewbox}"')
     
     return svg
 
@@ -302,10 +314,9 @@ if submit_button:
                 # 显示分子结构 - 使用透明背景容器
                 svg = mol_to_image(mol)
                 st.markdown(
-                    f'<div class="molecule-container" style="background-color: transparent; padding: 0;">{svg}</div>', 
+                    f'<div class="molecule-container" style="background-color: transparent; padding: 0; overflow: visible;">{svg}</div>', 
                     unsafe_allow_html=True
                 )
-
                 # 计算分子量
                 mol_weight = Descriptors.MolWt(mol)
                 st.markdown(f'<div class="molecular-weight">Molecular Weight: {mol_weight:.2f} g/mol</div>',
